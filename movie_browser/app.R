@@ -27,15 +27,34 @@ ui <- fluidPage(
       selectInput(
         inputId = "y",
         label = "Y-axis:",
-        choices = c("imdb_rating", "imdb_num_votes", "critics_score", "audience_score", "runtime"),
-        selected = "imdb_rating"
+        choices = c("IMDB Rating" = "imdb_rating",
+                    "IMDB Number of Votes" = "imdb_num_votes",
+                    "Critics Score" = "critics_score",
+                    "Audience Score" = "audience_score",
+                    "Runtime" = "runtime"),
+        selected = "audience_score"
       ),
       # Select variable for x-axis
       selectInput(
         inputId = "x",
         label = "X-axis:",
-        choices = c("imdb_rating", "imdb_num_votes", "critics_score", "audience_score", "runtime"),
-        selected = "imdb_rating"
+        choices = c("IMDB Rating" = "imdb_rating",
+                    "IMDB Number of Votes" = "imdb_num_votes",
+                    "Critics Score" = "critics_score",
+                    "Audience Score" = "audience_score",
+                    "Runtime" = "runtime"),
+        selected = "critics_score"
+      ),
+      # Select variable to color by
+      selectInput(
+        inputId = "z",
+        label = "Color by:",
+        choices = c("Title Type" = "title_type",
+                    "Genre" = "genre",
+                    "MPAA Rating" = "mpaa_rating",
+                    "Critics Rating" = "critics_rating",
+                    "Audience Rating" = "audience_rating"),
+        selected = "mpaa_rating"
       )
     ),
 
@@ -50,7 +69,7 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   output$scatterplot <- renderPlot({
-    ggplot(data = movies, aes_string(x = input$x, y = input$y)) +
+    ggplot(data = movies, aes_string(x = input$x, y = input$y, color = input$z)) +
       geom_point()
   })
 }
