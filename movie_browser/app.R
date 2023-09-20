@@ -117,7 +117,19 @@ ui <- fluidPage(
       # Select data table visualization
       checkboxInput(inputId = "show_data",
                     label = "Show data table:",
-                    value = TRUE)
+                    value = TRUE),
+
+      HTML("Select filtype and variables to be downloaded using the donwload button"),
+      radioButtons(inputId = "filetype",
+                   label = "Select filetype:",
+                   choices = c("csv", "tsv"),
+                   selected = "csv"),
+
+      selectInput(inputId = "selected_var",
+                         label = "Select variables:",
+                         choices = names(movies),
+                         multiple = TRUE,
+                         selected = c("title"))
     ),
 
     # Output: Show scatterplot
@@ -125,8 +137,7 @@ ui <- fluidPage(
       verbatimTextOutput("info"),
       plotOutput(outputId = "scatterplot", brush = "plot_brush", hover = "plot_hover"),
       textOutput(outputId = "correlation"),
-      textOutput(outputId = "avg_x"), # avg of x
-      textOutput(outputId = "avg_y"), # avg of y
+      htmlOutput(outputId = "avgs"), # avg of x and y
       verbatimTextOutput(outputId = "lmoutput"), # regression output
       plotOutput(outputId = "densityplot", height = 200),
       dataTableOutput(outputId = "moviestable"),
@@ -134,7 +145,9 @@ ui <- fluidPage(
       tableOutput(outputId = "summarytable"),
       # Show data table
       HTML('Table with selected data (brush) in scatterplot:'),
-      dataTableOutput(outputId = "brushtable")
+      dataTableOutput(outputId = "brushtable"),
+      HTML("Select filetype and variables, then hit 'Download data'."),
+      downloadButton("download_data", "Download data")
     )
   )
 )
@@ -221,9 +234,13 @@ server <- function(input, output, session) {
     # nearPoints() also works with hover and dblclick events
   })
 
-  output$avg_x <- renderText({
-    avg_x <- sampledInput() %>% pull(input$x) %>% mean() %>% round(2)
-    paste("Average", input$x, "=", avg_x)
+  output$avgs <- renderText({
+    data <- sampledInput()
+    avg_x <- data %>% pull(input$x) %>% mean() %>% round(2)
+    avg_y <- data %>% pull(input$y) %>% mean() %>% round(2)
+    str_x <- paste("Average", input$x, "=", avg_x)
+    str_y <- paste("Average", input$y, "=", avg_y)
+    HTML(paste(str_x, str_y, sep = '<br/>'))
   })
 
   output$avg_y <- renderText({
@@ -238,6 +255,20 @@ server <- function(input, output, session) {
     summ <- summary(lm(y ~ x, data = data))
     print(summ, digits = 3, signif.stars = FALSE)
   })
+
+  output$download_data <- downloadHandler(
+    filename = function() {
+      paste0("movies.", input$filetype)
+    },
+    content = function(file) {
+      if(input$filetype == "csv"){
+        write.csv(sampledInput() %>% select(input$selected_var), file)
+      }
+      if(input$filetype == "tsv"){
+        write.tsv(sampledInput() %>% select(input$selected_var), file)
+      }
+    }
+  )
 
 }
 
