@@ -13,7 +13,8 @@ load("movies.RData")
 # Vars outside the app
 
 movies <- movies %>%
-  mutate(thtr_rel_date = as.Date(thtr_rel_date))
+  mutate(thtr_rel_date = as.Date(thtr_rel_date)) %>%
+  mutate(score_ratio = audience_score / critics_score)
 
 n_total <- nrow(movies)
 
@@ -35,7 +36,7 @@ ui <- fluidPage(
       numericInput(inputId = "n",
                    label = "Sample_size",
                    min = 1, max = n_total,
-                   value = 30,
+                   value = n_total,
                    step = 1),
 
       # Select variable for y-axis
@@ -97,15 +98,21 @@ ui <- fluidPage(
         selected = 'ALL'
       ),
 
+      # Subset for title types
+      checkboxGroupInput(inputId = "selected_title_type",
+                         label = "Select title type:",
+                         choices = levels(movies$title_type),
+                         selected = levels(movies$title_type)),
 
-      HTML(paste("Enter a date between", min_date, "and", max_date)),
       # Select date
       dateRangeInput(
         inputId = "daterange",
         label = "Select date range:",
-        start = "01-01-13", end = "01-01-14",
+        start = min_date, end = max_date,
         startview = "year"
       ),
+
+      HTML(paste("Enter a date between", min_date, "and", max_date)),
 
       # Select data table visualization
       checkboxInput(inputId = "show_data",
@@ -116,8 +123,11 @@ ui <- fluidPage(
     # Output: Show scatterplot
     mainPanel(
       plotOutput(outputId = "scatterplot", height = 200),
+      textOutput(outputId = "correlation"),
       plotOutput(outputId = "densityplot", height = 200),
-      dataTableOutput(outputId = "moviestable")
+      dataTableOutput(outputId = "moviestable"),
+      # Show data table
+      tableOutput(outputId = "summarytable")
     )
   )
 )
@@ -140,9 +150,16 @@ server <- function(input, output, session) {
       data %>% filter(studio %in% selected)
     })
 
+   sampled_title_type_input <- reactive({
+     req(input$studios)
+      data <- sampled_studio_input()
+      data %>%
+        filter(title_type %in% input$selected_title_type)
+    })
+
    sampledInput <- reactive({
      req(input$daterange)
-     sampled_studio_input() %>%
+     sampled_title_type_input() %>%
        filter(thtr_rel_date >= input$daterange[1], thtr_rel_date <= input$daterange[2])
    })
 
@@ -163,6 +180,26 @@ server <- function(input, output, session) {
                     options = list(pageLength = 10),
                     rownames = FALSE)
     }
+  })
+
+  output$summarytable <- renderTable({
+    sampledInput() %>%
+      group_by(mpaa_rating) %>%
+      summarise(mean_score_ratio = mean(score_ratio),
+                SD = sd(score_ratio),
+                n = n())
+  },
+    striped = TRUE,
+    spacing = "l",
+    align = "lccr",
+    digits = 4,
+    width = "90%",
+    caption = "Score ratio (audience / critics' scores) summary statistics by MPAA rating.")
+
+  output$correlation <- renderText({
+    data <- sampledInput()
+    r <- round(cor(data[,input$x], data[,input$y]), digits = 2)
+    paste0('Correlation: ', r, ". Note: If the relationship between the two variables is not linear, the correlation coefficient will not be meaningful.")
   })
 }
 
