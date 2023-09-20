@@ -122,12 +122,19 @@ ui <- fluidPage(
 
     # Output: Show scatterplot
     mainPanel(
-      plotOutput(outputId = "scatterplot", height = 200),
+      verbatimTextOutput("info"),
+      plotOutput(outputId = "scatterplot", brush = "plot_brush", hover = "plot_hover"),
       textOutput(outputId = "correlation"),
+      textOutput(outputId = "avg_x"), # avg of x
+      textOutput(outputId = "avg_y"), # avg of y
+      verbatimTextOutput(outputId = "lmoutput"), # regression output
       plotOutput(outputId = "densityplot", height = 200),
       dataTableOutput(outputId = "moviestable"),
       # Show data table
-      tableOutput(outputId = "summarytable")
+      tableOutput(outputId = "summarytable"),
+      # Show data table
+      HTML('Table with selected data (brush) in scatterplot:'),
+      dataTableOutput(outputId = "brushtable")
     )
   )
 )
@@ -201,6 +208,37 @@ server <- function(input, output, session) {
     r <- round(cor(data[,input$x], data[,input$y]), digits = 2)
     paste0('Correlation: ', r, ". Note: If the relationship between the two variables is not linear, the correlation coefficient will not be meaningful.")
   })
+
+  output$brushtable <- renderDataTable({
+    data <- brushedPoints(sampledInput(), input$plot_brush)
+    data[, c('title', input$x, input$y)]
+  })
+
+  output$info <- renderPrint({
+    # With base graphics, need to tell it what the x and y variables are.
+    data <- nearPoints(sampledInput(), input$plot_hover, xvar = input$x, yvar = input$y)
+    data[, c('title', input$x, input$y)]
+    # nearPoints() also works with hover and dblclick events
+  })
+
+  output$avg_x <- renderText({
+    avg_x <- sampledInput() %>% pull(input$x) %>% mean() %>% round(2)
+    paste("Average", input$x, "=", avg_x)
+  })
+
+  output$avg_y <- renderText({
+    avg_y <- sampledInput() %>% pull(input$y) %>% mean() %>% round(2)
+    paste("Average", input$y, "=", avg_y)
+  })
+
+  output$lmoutput <- renderPrint({
+    data <- sampledInput()
+    x <- data %>% pull(input$x)
+    y <- data %>% pull(input$y)
+    summ <- summary(lm(y ~ x, data = data))
+    print(summ, digits = 3, signif.stars = FALSE)
+  })
+
 }
 
 # Create a Shiny app object ----------------------------------------------------
