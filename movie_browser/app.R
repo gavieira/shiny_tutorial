@@ -55,12 +55,21 @@ ui <- fluidPage(
           "Audience rating" = "audience_rating"
         ),
         selected = "mpaa_rating"
+      ),
+
+      # Select alpha
+      sliderInput(
+        inputId = "alpha",
+        label = "Alpha:",
+        min = 0, max = 1,
+        value = 1
       )
     ),
 
     # Output: Show scatterplot
     mainPanel(
-      plotOutput(outputId = "scatterplot")
+      plotOutput(outputId = "scatterplot"),
+      plotOutput(outputId = "densityplot", height = 200)
     )
   )
 )
@@ -71,10 +80,15 @@ server <- function(input, output, session) {
   output$scatterplot <- renderPlot({
 
     ggplot(data = movies, aes_string(x = input$x, y = input$y, color = input$z)) +
-      geom_point()
+      geom_point(alpha = input$alpha)
 
   })
 
+  output$densityplot <- renderPlot({
+    ggplot(data = movies, aes_string(x = input$x, color = input$z)) +
+      geom_density(alpha = input$alpha)
+
+  })
 }
 
 # Create a Shiny app object ----------------------------------------------------
