@@ -64,7 +64,19 @@ ui <- fluidPage(
         label = "Sample size:",
         min = 1, max = nrow(movies),
         value = 3
-      )
+      ),
+
+      #The next section is for testing observers
+      actionButton("minus", "-1"),
+      actionButton("plus", "+1"),
+      br(),
+      textOutput("value"),
+
+      #The next section is for testing observers
+      actionButton("double", "Double"),
+      br(),
+      textOutput("doubled_value")
+
     ),
 
     mainPanel(
@@ -96,6 +108,37 @@ server <- function(input, output, session) {
     ggplot(data = movies_subset(), aes_string(x = input$x, y = input$y, color = input$z)) +
       geom_point()
   })
+
+  value <- reactiveVal(2)
+
+  observeEvent(input$minus,{
+    newValue <- value() - 1 # rv <- reactiveValues(value = 0)
+    if (newValue >= 2) { return(value(newValue)) }  # rv$value <- newValue
+    return(value(2))
+
+    value(newValue)
+  })
+
+  observeEvent(input$plus, {
+    newValue <- value() + 1     # newValue <- rv$value + 1
+    if (newValue <= 8) { return(value(newValue)) }  # rv$value <- newValue
+    return(value(8))
+  })
+
+  output$value <- renderText({
+    value()                     # rv$value
+  })
+
+  double_value <- reactiveVal(1)
+
+  observeEvent(input$double, {
+    double_value(double_value() * 2)
+  })
+
+  output$doubled_value <- renderText({
+    double_value()
+  })
+
 
   # Print number of movies plotted
   output$n <- renderUI({
