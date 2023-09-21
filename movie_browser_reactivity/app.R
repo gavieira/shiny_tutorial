@@ -3,7 +3,6 @@
 library(shiny)
 library(ggplot2)
 library(dplyr)
-library(tools)
 
 # Load data --------------------------------------------------------------------
 
@@ -12,8 +11,6 @@ load("../movie_browser/movies.RData")
 # Define UI --------------------------------------------------------------------
 
 ui <- fluidPage(
-  titlePanel("Movie browser"),
-
   sidebarLayout(
     sidebarPanel(
       selectInput(
@@ -55,23 +52,24 @@ ui <- fluidPage(
         selected = "mpaa_rating"
       ),
 
-      textInput(
-        inputId = "plot_title",
-        label = "Plot title",
-        placeholder = "Enter text for plot title"
-      ),
-
       checkboxGroupInput(
         inputId = "selected_type",
         label = "Select movie type(s):",
         choices = c("Documentary", "Feature Film", "TV Movie"),
         selected = "Feature Film"
+      ),
+
+      numericInput(
+        inputId = "n_samp",
+        label = "Sample size:",
+        min = 1, max = nrow(movies),
+        value = 3
       )
     ),
 
     mainPanel(
       plotOutput(outputId = "scatterplot"),
-      textOutput(outputId = "description")
+      uiOutput(outputId = "n")
     )
   )
 )
@@ -80,30 +78,30 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
 
+  # Create new df that is n_samp obs from selected type movies
+  movies_sample <- reactive({
+    req(input$n_samp)
+    sample_n(movies, input$n_samp)
+  })
+
   # Create a subset of data filtering for selected title types
   movies_subset <- reactive({
     req(input$selected_type)
-    filter(movies, title_type %in% input$selected_type)
+    filter(movies_sample(), title_type %in% input$selected_type)
   })
 
-  # Convert plot_title toTitleCase
-  pretty_plot_title <- reactive({
-    toTitleCase(input$plot_title)
-  })
 
   # Create scatterplot object the plotOutput function is expecting
   output$scatterplot <- renderPlot({
-    ggplot(
-      data = movies_subset(),
-      aes_string(x = input$x, y = input$y, color = input$z)
-    ) +
-      geom_point() +
-      labs(title = pretty_plot_title())
+    ggplot(data = movies_subset(), aes_string(x = input$x, y = input$y, color = input$z)) +
+      geom_point()
   })
 
-  # Create descriptive text
-  output$description <- renderText({
-    paste0("The plot above titled '", pretty_plot_title(), "' visualizes the relationship between ", input$x, " and ", input$y, ", conditional on ", input$z, ".")
+  # Print number of movies plotted
+  output$n <- renderUI({
+    types <- factor(movies_subset()$title_type, levels = input$selected_type)
+    counts <- table(types)
+    HTML(paste("There are", counts, input$selected_type, "movies plotted in the plot above. <br>"))
   })
 }
 
