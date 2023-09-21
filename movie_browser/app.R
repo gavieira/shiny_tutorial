@@ -39,6 +39,14 @@ ui <- fluidPage(
                    value = n_total,
                    step = 1),
 
+      # Select which types of movies to plot
+      selectInput(
+        inputId = "movie_type",
+        label = "Select movie type:",
+        choices = c('ALL', levels(movies$title_type)),
+        selected = "ALL"
+      ),
+
       # Select variable for y-axis
       selectInput(
         inputId = "y",
@@ -94,7 +102,7 @@ ui <- fluidPage(
         inputId = 'studios',
         label = 'Select studios:',
         multiple = TRUE,
-        choices = c('ALL', movies %>% distinct(studio)),
+        choices = c('ALL', levels(movies$studio)),
         selected = 'ALL'
       ),
 
@@ -134,8 +142,9 @@ ui <- fluidPage(
 
     # Output: Show scatterplot
     mainPanel(
-      verbatimTextOutput("info"),
       plotOutput(outputId = "scatterplot", brush = "plot_brush", hover = "plot_hover"),
+      verbatimTextOutput("info"),
+      textOutput(outputId = "n_recs"),
       textOutput(outputId = "correlation"),
       htmlOutput(outputId = "avgs"), # avg of x and y
       verbatimTextOutput(outputId = "lmoutput"), # regression output
@@ -162,6 +171,7 @@ server <- function(input, output, session) {
       movies[1:input$n,]
     })
 
+
    sampled_studio_input <- reactive({
      req(input$studios)
       data <- sampled_n_input()
@@ -186,6 +196,11 @@ server <- function(input, output, session) {
   output$scatterplot <- renderPlot({
     ggplot(data = sampledInput(), aes_string(x = input$x, y = input$y, color = input$z)) +
       geom_point(alpha = input$alpha)
+  })
+
+  output$n_recs <- renderText({
+    n_recs <- nrow(sampledInput())
+    paste('Number of selected movies:', n_recs)
   })
 
   output$densityplot <- renderPlot({
