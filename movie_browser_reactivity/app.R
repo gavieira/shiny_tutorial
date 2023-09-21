@@ -7,6 +7,7 @@ library(dplyr)
 # Load data --------------------------------------------------------------------
 
 load("../movie_browser/movies.RData")
+max_rows <- nrow(movies)
 
 # Define UI --------------------------------------------------------------------
 
@@ -62,11 +63,52 @@ ui <- fluidPage(
       numericInput(
         inputId = "n_samp",
         label = "Sample size:",
-        min = 1, max = nrow(movies),
+        min = 1, max = max_rows,
         value = 3
       ),
 
+      sliderInput(
+        inputId = "alpha",
+        label = "Alpha:",
+        min = 0, max = 1,
+        value = 0.5
+      ),
+
+      sliderInput(
+        inputId = "size",
+        label = "Size:",
+        min = 0, max = 5,
+        value = 2
+        ),
+
+      textInput(
+        inputId = 'plot_title',
+        label = 'Plot title:',
+        placeholder = 'Type the plot title here'
+      ),
+
+      actionButton("update_title", "Update Title"),
+
+      br(),
+      br(),
+
+      HTML('The next section is for selecting a subset of rows and generating a table output with it'),
+
+      numericInput(
+        inputId = "n_rows",
+        label = "How many rows do you want to see?",
+        value = 10,
+        min = 1,
+        max = max_rows
+      ),
+
+      actionButton('table_output', 'Generate table output'),
+
+      br(),
+
       #The next section is for testing observers
+      HTML('The next section is for testing buttons, reactiveVal() and observeEvent():'),
+      br(),
       actionButton("minus", "-1"),
       actionButton("plus", "+1"),
       br(),
@@ -81,7 +123,8 @@ ui <- fluidPage(
 
     mainPanel(
       plotOutput(outputId = "scatterplot"),
-      uiOutput(outputId = "n")
+      uiOutput(outputId = "n"),
+      tableOutput(outputId = "table_rows"),
     )
   )
 )
@@ -102,11 +145,19 @@ server <- function(input, output, session) {
     filter(movies_sample(), title_type %in% input$selected_type)
   })
 
+  new_plot_title <- eventReactive(
+    eventExpr = input$update_title,
+    valueExpr = {
+      toTitleCase(input$plot_title)
+    }
+  )
 
   # Create scatterplot object the plotOutput function is expecting
   output$scatterplot <- renderPlot({
     ggplot(data = movies_subset(), aes_string(x = input$x, y = input$y, color = input$z)) +
-      geom_point()
+      geom_point(alpha = input$alpha, size = input$size) +
+      #labs(title =  new_plot_title())
+      labs(title = isolate({toTitleCase(input$plot_title)}))
   })
 
   value <- reactiveVal(2)
@@ -139,6 +190,18 @@ server <- function(input, output, session) {
     double_value()
   })
 
+  observeEvent(input$table_output, {
+    cat("Showing", input$n_rows, "rows\n")
+  })
+
+  #Take a reactive dependency on input$button, but not on any other inputs
+  df <- eventReactive(input$table_output, {
+    head(movies, input$n_rows)
+  })
+
+  output$table_rows <- renderTable({
+    df()
+  })
 
   # Print number of movies plotted
   output$n <- renderUI({
