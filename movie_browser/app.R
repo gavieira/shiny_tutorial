@@ -212,7 +212,10 @@ server <- function(input, output, session) {
   output$moviestable <- renderDataTable({
     if(input$show_data){
       DT::datatable(data = sampledInput() %>% select(title:studio),
-                    options = list(pageLength = 10),
+                    extensions = c('Buttons', 'ColReorder', 'Responsive'), options = list(pageLength = 10,
+                                                           dom = 'Bfrtip',
+                                                           colReorder = TRUE,
+                                                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print', 'colvis')),
                     rownames = FALSE)
     }
   })
